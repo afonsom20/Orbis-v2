@@ -6,6 +6,8 @@ import csv
 from datetime import datetime
 from PIL import Image as PILImage
 from streamlit_cropper import st_cropper
+import tkinter as tk
+from tkinter import filedialog
 
 # --- Utility functions ---
 # Load and preprocess images
@@ -32,7 +34,7 @@ def circular_crop(img):
 
 def subtract_background_auto(img, ksize):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    k = max(1, int(ksize));
+    k = max(1, int(ksize))
     if k % 2 == 0: k += 1
     kernel = np.ones((k, k), np.uint8)
     background = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
@@ -41,7 +43,7 @@ def subtract_background_auto(img, ksize):
 # Denoise and threshold helpers
 
 def remove_noise(img, ksize):
-    k = max(1, int(ksize));
+    k = max(1, int(ksize))
     if k % 2 == 0: k += 1
     return cv2.medianBlur(img, k)
 
@@ -50,7 +52,7 @@ def threshold_image(img, thresh_val, invert):
     return cv2.bitwise_not(th) if invert else th
 
 def close_holes(img, ksize):
-    k = max(1, int(ksize));
+    k = max(1, int(ksize))
     if k % 2 == 0: k += 1
     kernel = np.ones((k, k), np.uint8)
     return cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
@@ -130,25 +132,42 @@ def main():
 
     scale = st.session_state.scale
     st.sidebar.subheader("Analysis Configuration")
-    mode = st.sidebar.radio("Mode",['Unsupervised','Supervised'])
+    mode = st.sidebar.radio("Mode",['Unsupervised','Supervised [Experimental]'])
     st.sidebar.markdown("---")
+
+    # Basic settings
+    zoom = st.sidebar.slider("Zoom factor",1.0,5.0,1.0,0.1)
+    contrast = st.sidebar.slider("Contrast",1.0,3.0,1.0,0.1)
+    circular_crop_opt = st.sidebar.checkbox("Circular crop")
+    single = st.sidebar.checkbox("Single colony")
+    # threshold slider always as integer
+    th_val = st.sidebar.slider("Threshold",0,255,127)
+
+    # Advanced toggle
+    advanced = st.sidebar.checkbox("Advanced mode")
+    bg_sub = False; bg_ks = 0; invert = False; noise = 0; hole_fill = 0; norm = True
+    if advanced:
+        bg_sub = st.sidebar.checkbox("Subtract background [Experimental]")
+        if bg_sub and st.session_state.scale_set:
+            bg_ks = st.sidebar.slider("BG kernel size",3,101,15,2)
+        invert = st.sidebar.checkbox("Invert threshold")
+        noise = st.sidebar.slider("Noise removal",0,15,0)
+        hole_fill = st.sidebar.slider("Hole fill",0,50,0)
+        norm = st.sidebar.checkbox("Brightness normalization", value=True)
+
     general = {
-        'zoom':st.sidebar.slider("Zoom factor",1.0,5.0,1.0,0.1),
-        'contrast':st.sidebar.slider("Contrast",1.0,3.0,1.0,0.1),
-        'circular_crop':st.sidebar.checkbox("Circular crop"),
-        'bg_sub':st.sidebar.checkbox("Subtract background"),
-        'bg_ks':st.sidebar.slider("BG kernel size",3,101,15,2) if st.session_state.scale_set else 0,
-        'th_val':None,
-        'invert':st.sidebar.checkbox("Invert threshold"),
-        'noise':st.sidebar.slider("Noise removal",0,15,0),
-        'hole_fill':st.sidebar.slider("Hole fill",0,50,0),
-        'single':st.sidebar.checkbox("Single colony"),
-        'norm':st.sidebar.checkbox("Brightness normalization")
+        'zoom': zoom,
+        'contrast': contrast,
+        'circular_crop': circular_crop_opt,
+        'bg_sub': bg_sub,
+        'bg_ks': bg_ks,
+        'th_val': th_val,
+        'invert': invert,
+        'noise': noise,
+        'hole_fill': hole_fill,
+        'single': single,
+        'norm': norm
     }
-    if general['bg_sub']:
-        general['th_val'] = st.sidebar.slider("Threshold",0.0,10.0,1.0,0.1)
-    else:
-        general['th_val'] = st.sidebar.slider("Threshold",0,255,127)
 
     imgs = st.file_uploader("Upload images to analyze",accept_multiple_files=True,type=['png','jpg','jpeg'])
     if not imgs:
@@ -157,48 +176,58 @@ def main():
     if general['norm']:
         images = normalize_brightness(images)
 
-    settings_list=[]
-    if mode=='Supervised':
+    settings_list = []
+    if mode == 'Supervised [Experimental]':
         st.header("General Outlines")
-        cols=st.columns(len(images))
-        for i,img in enumerate(images):
-            with cols[i]: st.image(process_image(img,general)[0],caption=imgs[i].name)
+        cols = st.columns(len(images))
+        for i, img in enumerate(images):
+            with cols[i]: st.image(process_image(img, general)[0],caption=imgs[i].name)
         st.header("Overrides per Image")
-        for idx,img in enumerate(images):
+        for idx, img in enumerate(images):
             st.subheader(imgs[idx].name)
             with st.expander("Override settings"):
-                s={}
-                for k,v in general.items():
-                    title=k.replace('_',' ').title()
-                    if isinstance(v,bool): s[k]=st.checkbox(title,value=v,key=f"{k}_{idx}")
-                    elif isinstance(v,(int,float)):
-                        low,high,step=(0.0,10.0,0.1) if k=='th_val' and general['bg_sub'] else (0.0,255.0,1.0)
-                        s[k]=st.slider(title,low,high,general[k],step,key=f"{k}_{idx}")
-                st.image(process_image(img,s)[0],caption="Adjusted outline")
+                s = {}
+                for k, v in general.items():
+                    title = k.replace('_',' ').title()
+                    if isinstance(v, bool):
+                        s[k] = st.checkbox(title, value=v, key=f"{k}_{idx}")
+                    elif isinstance(v, (int, float)):
+                        low, high, step = (0.0,10.0,0.1) if k=='th_val' and general['bg_sub'] else (0.0,255.0,1.0)
+                        s[k] = st.slider(title, low, high, general[k], step, key=f"{k}_{idx}")
+                st.image(process_image(img, s)[0], caption="Adjusted outline")
                 settings_list.append(s)
     else:
-        settings_list=[general]*len(images)
+        settings_list = [general] * len(images)
         st.header("Preview")
-        st.image(process_image(images[0],general)[0],caption="Preview + Outline")
+        st.image(process_image(images[0], general)[0],caption="Preview + Outline")
 
     if st.button("Process and Download Results"):
-        ts=datetime.now().strftime("%d-%m-%y - %Hh%M")
-        base=os.path.join('Results',ts)
-        out=base;cnt=1
-        while os.path.exists(out): out=f"{base}_{cnt}";cnt+=1
-        os.makedirs(out,exist_ok=True)
-        rows=[]
-        for img,f,s in zip(images,imgs,settings_list):
-            ov,area_px=process_image(img,s)
-            cv2.imwrite(os.path.join(out,f.name),cv2.cvtColor(ov,cv2.COLOR_RGB2BGR))
-            area=area_px*(st.session_state.scale['factor']**2)
-            rows.append((f.name,area))
-        unit=st.session_state.scale['unit']
-        with open(os.path.join(out,f"areas({unit}^2).csv"),'w',newline='') as cf:
-            w=csv.writer(cf);w.writerow(['filename',f"Area ({unit}^2)"]);w.writerows(rows)
-        with open(os.path.join(out,'log.txt'),'w') as lf:
+        # ask user to select output folder
+        root = tk.Tk()
+        root.withdraw()
+        out_dir = filedialog.askdirectory()
+        if not out_dir:
+            st.error("No folder selected. Please select an output folder.")
+            return
+        ts = datetime.now().strftime("%d-%m-%y - %Hh%M")
+        out = os.path.join(out_dir, ts)
+        cnt = 1
+        while os.path.exists(out):
+            out = f"{os.path.join(out_dir, ts)}_{cnt}"
+            cnt += 1
+        os.makedirs(out, exist_ok=True)
+        rows = []
+        for img, f, s in zip(images, imgs, settings_list):
+            ov, area_px = process_image(img, s)
+            cv2.imwrite(os.path.join(out, f.name), cv2.cvtColor(ov, cv2.COLOR_RGB2BGR))
+            area = area_px * (st.session_state.scale['factor'] ** 2)
+            rows.append((f.name, area))
+        unit = st.session_state.scale['unit']
+        with open(os.path.join(out, f"areas({unit}^2).csv"), 'w', newline='') as cf:
+            w = csv.writer(cf); w.writerow(['filename', f"Area ({unit}^2)"]); w.writerows(rows)
+        with open(os.path.join(out, 'log.txt'), 'w') as lf:
             lf.write(f"Date:{datetime.now()}\nMode:{mode}\nScale:{st.session_state.scale}\nSettings:{general}\n")
         st.success(f"Results saved in {out}")
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
