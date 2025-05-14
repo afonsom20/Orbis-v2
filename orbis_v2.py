@@ -3,11 +3,11 @@ import cv2
 import numpy as np
 import os
 import csv
+import io
+import zipfile
 from datetime import datetime
 from PIL import Image as PILImage
 from streamlit_cropper import st_cropper
-import tkinter as tk
-from tkinter import filedialog
 
 # --- Utility functions ---
 # Load and preprocess images
@@ -107,7 +107,7 @@ def main():
         st.session_state.scale_set = False
         st.session_state.scale = {'factor':1.0,'unit':'pixels'}
 
-    # Scale calibration: upload + crop to set pixel/mm or pixel/cm
+    # Scale calibration
     scale_img = st.sidebar.file_uploader("Upload ruler image (optional)", type=['png','jpg','jpeg'])
     if scale_img and not st.session_state.scale_set:
         st.sidebar.subheader("Scale Calibration")
@@ -135,15 +135,12 @@ def main():
     mode = st.sidebar.radio("Mode",['Unsupervised','Supervised [Experimental]'])
     st.sidebar.markdown("---")
 
-    # Basic settings
     zoom = st.sidebar.slider("Zoom factor",1.0,5.0,1.0,0.1)
     contrast = st.sidebar.slider("Contrast",1.0,3.0,1.0,0.1)
     circular_crop_opt = st.sidebar.checkbox("Circular crop")
     single = st.sidebar.checkbox("Single colony")
-    # threshold slider always as integer
     th_val = st.sidebar.slider("Threshold",0,255,127)
 
-    # Advanced toggle
     advanced = st.sidebar.checkbox("Advanced mode")
     bg_sub = False; bg_ks = 0; invert = False; noise = 0; hole_fill = 0; norm = True
     if advanced:
@@ -202,32 +199,30 @@ def main():
         st.image(process_image(images[0], general)[0],caption="Preview + Outline")
 
     if st.button("Process and Download Results"):
-        # ask user to select output folder
-        root = tk.Tk()
-        root.withdraw()
-        out_dir = filedialog.askdirectory()
-        if not out_dir:
-            st.error("No folder selected. Please select an output folder.")
-            return
-        ts = datetime.now().strftime("%d-%m-%y - %Hh%M")
-        out = os.path.join(out_dir, ts)
-        cnt = 1
-        while os.path.exists(out):
-            out = f"{os.path.join(out_dir, ts)}_{cnt}"
-            cnt += 1
-        os.makedirs(out, exist_ok=True)
-        rows = []
-        for img, f, s in zip(images, imgs, settings_list):
-            ov, area_px = process_image(img, s)
-            cv2.imwrite(os.path.join(out, f.name), cv2.cvtColor(ov, cv2.COLOR_RGB2BGR))
-            area = area_px * (st.session_state.scale['factor'] ** 2)
-            rows.append((f.name, area))
+        # package results in-memory and offer as zip
         unit = st.session_state.scale['unit']
-        with open(os.path.join(out, f"areas({unit}^2).csv"), 'w', newline='') as cf:
-            w = csv.writer(cf); w.writerow(['filename', f"Area ({unit}^2)"]); w.writerows(rows)
-        with open(os.path.join(out, 'log.txt'), 'w') as lf:
-            lf.write(f"Date:{datetime.now()}\nMode:{mode}\nScale:{st.session_state.scale}\nSettings:{general}\n")
-        st.success(f"Results saved in {out}")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            rows = []
+            for img, f, s in zip(images, imgs, settings_list):
+                ov, area_px = process_image(img, s)
+                ext = os.path.splitext(f.name)[1]
+                _, im_buf = cv2.imencode(ext, cv2.cvtColor(ov, cv2.COLOR_RGB2BGR))
+                z.writestr(f.name, im_buf.tobytes())
+                area = area_px * (st.session_state.scale['factor'] ** 2)
+                rows.append((f.name, area))
+            # write CSV
+            csv_buf = io.StringIO()
+            writer = csv.writer(csv_buf)
+            writer.writerow(['filename', f"Area ({unit}^2)"])
+            writer.writerows(rows)
+            z.writestr(f"areas({unit}^2).csv", csv_buf.getvalue())
+            # write log
+            log = f"Date:{datetime.now()}\nMode:{mode}\nScale:{st.session_state.scale}\nSettings:{general}\n"
+            z.writestr('log.txt', log)
+        buf.seek(0)
+        st.download_button("Download Results", buf, file_name=f"OrbisResults_{ts}.zip", mime="application/zip")
 
 if __name__ == '__main__':
     main()
