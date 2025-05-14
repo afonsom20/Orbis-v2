@@ -3,4 +3,4 @@ opencv-contrib-python
 pillow_heif
 streamlit_cropper
 matplotlib
-tkinter
+python3-tk
