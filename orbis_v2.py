@@ -19,7 +19,7 @@ def load_image_from_upload(uploaded_file):
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-# Circular crop uses named mask argument
+# Circular crop
 
 def circular_crop(img):
     """Crop image to a central circle."""
@@ -30,7 +30,7 @@ def circular_crop(img):
     cv2.circle(mask, center, radius, 255, -1)
     return cv2.bitwise_and(img, img, mask=mask)
 
-# Background subtraction via morphological opening
+# Optional background subtraction via morphological opening
 
 def subtract_background_auto(img, ksize):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -102,7 +102,14 @@ def process_image(img, settings):
 
 # --- Streamlit App ---
 def main():
-    st.title("Orbis v2.0 [Experimental]")
+    logo = PILImage.open("LogoSpaceMicrobesLab_White_with_background.png")
+
+    # two columns, left for the title, right for the logo
+    col1, col2 = st.columns([1, 8])
+    col1.title("Orbis v2.0")
+    col2.image(logo, width=80)
+
+    st.title("Orbis v2.0")
     if 'scale_set' not in st.session_state:
         st.session_state.scale_set = False
         st.session_state.scale = {'factor':1.0,'unit':'pixels'}
@@ -132,7 +139,6 @@ def main():
 
     scale = st.session_state.scale
     st.sidebar.subheader("Analysis Configuration")
-    mode = st.sidebar.radio("Mode",['Unsupervised','Supervised [Experimental]'])
     st.sidebar.markdown("---")
 
     zoom = st.sidebar.slider("Zoom factor",1.0,5.0,1.0,0.1)
@@ -174,29 +180,9 @@ def main():
         images = normalize_brightness(images)
 
     settings_list = []
-    if mode == 'Supervised [Experimental]':
-        st.header("General Outlines")
-        cols = st.columns(len(images))
-        for i, img in enumerate(images):
-            with cols[i]: st.image(process_image(img, general)[0],caption=imgs[i].name)
-        st.header("Overrides per Image")
-        for idx, img in enumerate(images):
-            st.subheader(imgs[idx].name)
-            with st.expander("Override settings"):
-                s = {}
-                for k, v in general.items():
-                    title = k.replace('_',' ').title()
-                    if isinstance(v, bool):
-                        s[k] = st.checkbox(title, value=v, key=f"{k}_{idx}")
-                    elif isinstance(v, (int, float)):
-                        low, high, step = (0.0,10.0,0.1) if k=='th_val' and general['bg_sub'] else (0.0,255.0,1.0)
-                        s[k] = st.slider(title, low, high, general[k], step, key=f"{k}_{idx}")
-                st.image(process_image(img, s)[0], caption="Adjusted outline")
-                settings_list.append(s)
-    else:
-        settings_list = [general] * len(images)
-        st.header("Preview")
-        st.image(process_image(images[0], general)[0],caption="Preview + Outline")
+    settings_list = [general] * len(images)
+    st.header("Preview")
+    st.image(process_image(images[0], general)[0],caption="Preview + Outline")
 
     if st.button("Process and Download Results"):
         # package results in-memory and offer as zip
