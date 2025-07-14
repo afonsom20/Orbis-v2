@@ -102,9 +102,6 @@ def process_image(img, settings):
 
 # --- Streamlit App ---
 def main():
-    logo = PILImage.open("LogoSpaceMicrobesLab_White_with_background.png")
-    st.image(logo)
-
     st.title("Orbis v2.0")
     if 'scale_set' not in st.session_state:
         st.session_state.scale_set = False
@@ -205,6 +202,10 @@ def main():
             z.writestr('log.txt', log)
         buf.seek(0)
         st.download_button("Download Results", buf, file_name=f"OrbisResults_{ts}.zip", mime="application/zip")
+
+    # Logo
+    logo = PILImage.open("LogoSpaceMicrobesLab_White_with_background.png")
+    st.image(logo, width = 500)
 
 if __name__ == '__main__':
     main()
