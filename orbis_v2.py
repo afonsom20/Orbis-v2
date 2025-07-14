@@ -143,6 +143,7 @@ def main():
     advanced = st.sidebar.checkbox("Advanced mode")
     bg_sub = False; bg_ks = 0; invert = False; noise = 0; hole_fill = 0; norm = True
     if advanced:
+        st.sidebar.markdown("---")
         bg_sub = st.sidebar.checkbox("Subtract background [Experimental]")
         if bg_sub and st.session_state.scale_set:
             bg_ks = st.sidebar.slider("BG kernel size",3,101,15,2)
@@ -198,7 +199,7 @@ def main():
             writer.writerows(rows)
             z.writestr(f"areas({unit}^2).csv", csv_buf.getvalue())
             # write log
-            log = f"Date:{datetime.now()}\nMode:{mode}\nScale:{st.session_state.scale}\nSettings:{general}\n"
+            log = f"Date:{datetime.now()}\nScale:{st.session_state.scale}\nSettings:{general}\n"
             z.writestr('log.txt', log)
         buf.seek(0)
         st.download_button("Download Results", buf, file_name=f"OrbisResults_{ts}.zip", mime="application/zip")
