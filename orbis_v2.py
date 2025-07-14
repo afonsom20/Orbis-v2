@@ -131,7 +131,7 @@ def main():
         return
 
     scale = st.session_state.scale
-    st.sidebar.subheader("Analysis Configuration")
+
     st.sidebar.markdown("---")
 
     zoom = st.sidebar.slider("Zoom factor",1.0,5.0,1.0,0.1)
