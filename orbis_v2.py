@@ -103,11 +103,7 @@ def process_image(img, settings):
 # --- Streamlit App ---
 def main():
     logo = PILImage.open("LogoSpaceMicrobesLab_White_with_background.png")
-
-    # two columns, left for the title, right for the logo
-    col1, col2 = st.columns([1, 8])
-    col1.title("Orbis v2.0")
-    col2.image(logo, width=80)
+    st.image(logo)
 
     st.title("Orbis v2.0")
     if 'scale_set' not in st.session_state:
