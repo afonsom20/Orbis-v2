@@ -102,7 +102,12 @@ def process_image(img, settings):
 
 # --- Streamlit App ---
 def main():
-    st.title("Orbis v2.0")
+    full_logo = "LogoSpaceMicrobesLab_White.png"
+    small_icon = "Icon Space Microbes Lab.png"
+    st.logo(full_logo, icon_image=small_icon, size="large")
+
+    #st.title("Orbis v2.0")
+    st.image("Orbis Logo.png", width = 400)
     if 'scale_set' not in st.session_state:
         st.session_state.scale_set = False
         st.session_state.scale = {'factor':1.0,'unit':'pixels'}
@@ -116,7 +121,7 @@ def main():
             pil,
             realtime_update=True,
             box_color="#FF0000",
-            aspect_ratio=None,
+            aspect_ratio=(10,1),
             return_type='image',
             key='scale_cropper'
         )
@@ -142,8 +147,9 @@ def main():
 
     advanced = st.sidebar.checkbox("Advanced mode")
     bg_sub = False; bg_ks = 0; invert = False; noise = 0; hole_fill = 0; norm = True
+    
+    st.sidebar.markdown("---")
     if advanced:
-        st.sidebar.markdown("---")
         bg_sub = st.sidebar.checkbox("Subtract background [Experimental]")
         if bg_sub and st.session_state.scale_set:
             bg_ks = st.sidebar.slider("BG kernel size",3,101,15,2)
