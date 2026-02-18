@@ -49,3 +49,21 @@ It is deliberately lightweight and explainable, making it suitable for education
 
 ### Citation and Additional Information
 For additional information, please see our preprint: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5912070
+
+### Teaching Implementation Example (FCUP, 2024/2025)
+Orbis v2 was implemented as a practical image-analysis tool in a Master’s Degree course in Astrobiology at the Faculty of Sciences of the University of Porto (FCUP), during the 2nd semester of the 2024/2025 academic year.
+
+The tool was used in a laboratory session focused on assessing whether simulated microgravity conditions affected the colony growth of a novel environmental fungal isolate. Students performed the following workflow:
+1. Each student inoculated and incubated Petri dishes under defined experimental conditions.
+2. Top-down photographs of each plate were taken using standard smartphone cameras.
+3. All images were uploaded to a shared class folder.
+4. Students used Orbis v2 live during the session to:
+  - Upload images,
+  - Calibrate scale,
+  - Apply thresholding and preprocessing as needed,
+  - Extract colony area measurements.
+5. Colony area data were exported in CSV format for downstream analysis and comparison between experimental conditions.
+
+The implementation aimed to introduce students to quantitative fungal colony analysis, as well as demonstrate principles of digital image segmentation and thresholding, by providing hands-on experience with reproducible and open-source analytical tools.
+
+Orbis v2 enabled real-time data analysis in a classroom environment without requiring specialized hardware or prior experience with image-analysis software.
