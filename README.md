@@ -48,7 +48,9 @@ This program was designed with accessibility in mind, to make it convenient to u
 It is deliberately lightweight and explainable, making it suitable for education, routine lab work, and standardized workflows.
 
 ### Citation and Additional Information
-For additional information, please see our preprint: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5912070
+If you use Orbis v2 in your work, please cite our paper: 
+
+Mota, A., Schiele, A., Santos de Sousa, I., & Cortesão, M. (2026). Open-source digital tools for filamentous fungi analysis. Journal of Microbiological Methods, 107465. https://doi.org/10.1016/j.mimet.2026.107465 
 
 ### Teaching Implementation Example (FCUP, 2024/2025)
 Orbis v2 was implemented as a practical image-analysis tool in a Master’s Degree course in Astrobiology at the Faculty of Sciences of the University of Porto (FCUP), during the 2nd semester of the 2024/2025 academic year.
