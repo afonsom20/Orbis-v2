@@ -1,5 +1,6 @@
 import csv
 import gc
+import hashlib
 import os
 import shutil
 import tempfile
@@ -102,7 +103,13 @@ def clear_upload_state(remove_session_dir=False):
 
 
 def upload_signature(files):
-    return tuple((f.name, getattr(f, "size", None)) for f in files)
+    signature = []
+    for uploaded_file in files:
+        uploaded_file.seek(0)
+        file_hash = hashlib.blake2b(uploaded_file.getbuffer(), digest_size=16).hexdigest()
+        uploaded_file.seek(0)
+        signature.append((uploaded_file.name, getattr(uploaded_file, "size", None), file_hash))
+    return tuple(signature)
 
 
 
@@ -249,7 +256,7 @@ def process_image(img, settings):
 
 
 def build_results_zip(manifest, settings, scale):
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     zip_path = os.path.join(st.session_state.session_dir, f"OrbisResults_{ts}.zip")
     unit = scale["unit"]
     used_names = set()
@@ -408,8 +415,8 @@ def main():
         preview_img = load_image_from_path(manifest[0]["path"], manifest[0]["name"])
         if general["norm"]:
             preview_img = apply_normalization(preview_img, manifest[0]["norm_alpha"])
-        preview_img = scale_for_preview(preview_img)
-        st.image(process_image(preview_img, general)[0], caption="Preview + Outline")
+        preview_overlay, _ = process_image(preview_img, general)
+        st.image(scale_for_preview(preview_overlay), caption="Preview + Outline")
     except ValueError as exc:
         st.error(str(exc))
         return
@@ -421,12 +428,14 @@ def main():
             clear_generated_zip()
             st.error(str(exc))
             return
-        clear_generated_zip()
+        previous_zip = generated_zip
         st.session_state.generated_zip = {
             "path": zip_path,
             "download_name": download_name,
             "signature": current_sig,
         }
+        if previous_zip and previous_zip["path"] != zip_path and os.path.exists(previous_zip["path"]):
+            os.remove(previous_zip["path"])
         generated_zip = st.session_state.generated_zip
 
     if generated_zip and generated_zip["signature"] == current_sig and os.path.exists(generated_zip["path"]):
