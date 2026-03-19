@@ -1,5 +1,6 @@
+# Use the headless OpenCV build for Streamlit Cloud/Linux containers.
+# The contrib wheel can pull in GUI-linked native deps such as libGL.so.1.
 opencv-python-headless
-opencv-contrib-python
 pillow_heif
 streamlit_cropper
 matplotlib
